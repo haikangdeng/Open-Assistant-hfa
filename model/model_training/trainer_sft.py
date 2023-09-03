@@ -250,13 +250,18 @@ def tokenizer_sanity_check(tokenizer):
     from model_training.custom_datasets.formatting import QA_SPECIAL_TOKENS, create_dataset_entry_qa
 
     ds_entry = create_dataset_entry_qa(
-        mode="sft", questions=["Q1", "Q2"], answers=["A1", "A2"], lang="en", context="ctx"
+        mode="sft",
+        questions=["This is human utterance 1", "Human Utterance 2"],
+        answers=["This is what the assistant says 1", "This is what the assistant says 2"],
+        # lang="en",
+        # context="ctx"
     )
+    print(ds_entry)
     in_text = ds_entry.get_formatted(
         tokenizer.eos_token,
-        use_system_tag=True,
+        use_system_tag=False,
         system_property_dropout=0,
-        system_add_length=True,
+        system_add_length=False,
     )
     in_text = "".join(in_text)
 

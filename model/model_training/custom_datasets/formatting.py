@@ -7,14 +7,21 @@ from typing import Literal, Optional
 from pydantic import BaseModel, validator
 from pydantic.fields import ModelField
 
-QA_SPECIAL_TOKENS = {
-    "Question": "<|prompter|>",
-    "Answer": "<|assistant|>",
-    "System": "<|system|>",
-    "StartPrefix": "<|prefix_begin|>",
-    "EndPrefix": "<|prefix_end|>",
-}
+# QA_SPECIAL_TOKENS = {
+#     "Question": "<|prompter|>",
+#     "Answer": "<|assistant|>",
+#     "System": "<|system|>",
+#     "StartPrefix": "<|prefix_begin|>",
+#     "EndPrefix": "<|prefix_end|>",
+# }
 
+QA_SPECIAL_TOKENS = {
+    "Question": "Human: ",
+    "Answer": "Assistant: ",
+    "System": "",
+    "StartPrefix": "",
+    "EndPrefix": "",
+}
 
 def format_system_prefix(prefix, eos_token):
     return "{}{}{}".format(

@@ -212,7 +212,8 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
         # Only 13B has a tokenizer available on HF
         tokenizer_name = "cerebras/Cerebras-GPT-13B"
 
-    tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
+    # tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name, cache_dir=conf.cache_dir)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name)
 
     tokenizer_config = match_tokenizer_name(conf.model_name)
 
@@ -313,8 +314,11 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 assert conf.pooling in ("mean", "last"), f"invalid pooling configuration '{conf.pooling}'"
                 model.config.pooling = conf.pooling
         else:
+            # model = transformers.AutoModelForSequenceClassification.from_pretrained(
+            #     conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
+            # )
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
-                conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
+                conf.model_name, num_labels=1, torch_dtype=dtype
             )
     if not conf.is_reward_model:
         if conf.peft_type is not None and conf.peft_type == "prefix-tuning" and "llama" in conf.model_name:
