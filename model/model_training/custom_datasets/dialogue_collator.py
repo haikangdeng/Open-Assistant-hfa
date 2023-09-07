@@ -35,14 +35,21 @@ class DialogueDataCollator:
     use_system_tag: bool = False
     system_property_dropout: float = 0.5
     system_add_length: bool = True
+    end_token: str = None
 
     def __post_init__(self):
         assert self.tokenizer.eos_token
+        
+        # for llama2, change the way dialogues are formatted: end every utterance with sep_token instead of eos_token
+        if self.tokenizer.eos_token == "</s>" and self.tokenizer.sep_token == "<s>":
+            self.end_token = self.tokenizer.sep_token
+        else:
+            self.end_token = self.tokenizer.eos_token
 
         if self.use_system_prefix:
             assert self.system_prefix
             self.system_prefix = self.tokenizer.encode(
-                format_system_prefix(self.system_prefix, self.tokenizer.eos_token),
+                format_system_prefix(self.system_prefix, self.end_token),
                 add_special_tokens=False,
                 return_tensors="np",
             )[0]
@@ -60,7 +67,7 @@ class DialogueDataCollator:
         pretrain_dataset = False
         if isinstance(messages, DatasetEntrySft):
             messages = messages.get_formatted(
-                eos_token=self.tokenizer.eos_token,
+                eos_token=self.end_token,
                 use_system_tag=self.use_system_tag,
                 system_property_dropout=self.system_property_dropout,
                 system_add_length=self.system_add_length,
@@ -70,7 +77,7 @@ class DialogueDataCollator:
             pretrain_dataset = True
         else:
             messages = list(messages)
-            messages = format_pairs(messages, self.tokenizer.eos_token)
+            messages = format_pairs(messages, self.end_token)
 
         flatten_message = self.tokenizer(
             "".join(messages),

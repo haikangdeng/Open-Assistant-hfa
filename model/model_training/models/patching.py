@@ -14,6 +14,7 @@ from transformers import (
     GPTNeoXModel,
     LlamaForCausalLM,
     LlamaModel,
+    LlamaForSequenceClassification,
 )
 from transformers.models.llama.modeling_llama import (
     LlamaDynamicNTKScalingRotaryEmbedding,
@@ -37,6 +38,8 @@ SUPPORTED_MODELS = [
     GPTNeoXRewardModel,
     # Currently only supported by NeoX models; Will work on LLaMa models
     AutoModelForCausalLMWithHydraValueHead,
+    
+    LlamaForSequenceClassification,
 ]
 
 
@@ -147,7 +150,7 @@ or run with:
     if isinstance(model, GPTNeoXRewardModel) or isinstance(model, GPTNeoXForCausalLM):
         model = model.gpt_neox
 
-    if isinstance(model, LlamaForCausalLM):
+    if isinstance(model, LlamaForCausalLM) or isinstance(model, LlamaForSequenceClassification):
         model = model.model
 
     if isinstance(model, AutoModelForCausalLMWithHydraValueHead):

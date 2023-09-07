@@ -240,6 +240,8 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
     additional_special_tokens = list(set(additional_special_tokens + list(QA_SPECIAL_TOKENS.values())))
 
     tokenizer.add_special_tokens({"additional_special_tokens": additional_special_tokens})
+    
+    print(f'*** tokenizer.pad_token: {tokenizer.pad_token} ***')
 
     return tokenizer
 
@@ -313,6 +315,10 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
             if conf.pooling:
                 assert conf.pooling in ("mean", "last"), f"invalid pooling configuration '{conf.pooling}'"
                 model.config.pooling = conf.pooling
+        elif "llama2-7b" in conf.model_name:
+            model = transformers.LlamaForSequenceClassification.from_pretrained(
+                conf.model_name, num_labels=1, torch_dtype=dtype, device_map="auto"
+            )
         else:
             # model = transformers.AutoModelForSequenceClassification.from_pretrained(
             #     conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
@@ -320,6 +326,7 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 conf.model_name, num_labels=1, torch_dtype=dtype
             )
+        print(model)
     if not conf.is_reward_model:
         if conf.peft_type is not None and conf.peft_type == "prefix-tuning" and "llama" in conf.model_name:
             model = LlamaForCausalLM.from_pretrained(conf.model_name, cache_dir=conf.cache_dir, torch_dtype=dtype)

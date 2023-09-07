@@ -90,7 +90,8 @@ defaults:
   peft_type: "lora"
   superhot: false
 
-sft_rm:
+### new
+gold-sft:
   rng_seed: 0xa1221f97
   learning_rate: 1e-5
   gradient_checkpointing: false
@@ -325,7 +326,8 @@ oasst-top1:
         val_split: 0.05
         top_k: 1
 
-llama2-7b-sft:
+# finetune llama2 on ranking dataset, prepare for contrastive learning
+llama2-7b-gold-sft:
   dtype: bf16
   log_dir: "llama2_log_7b"
   learning_rate: 1e-5
@@ -337,10 +339,10 @@ llama2-7b-sft:
   warmup_steps: 500
   gradient_checkpointing: true
   gradient_accumulation_steps: 1
-  per_device_train_batch_size: 48
-  per_device_eval_batch_size: 48
-  eval_steps: 1000
-  save_steps: 500
+  per_device_train_batch_size: 32
+  per_device_eval_batch_size: 32
+  eval_steps: 2000
+  save_steps: 1000
   num_train_epochs: 1
   save_total_limit: 10
   use_flash_attention: true
