@@ -319,6 +319,8 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
             model = transformers.LlamaForSequenceClassification.from_pretrained(
                 conf.model_name, num_labels=1, torch_dtype=dtype, device_map="auto"
             )
+            model.config.pad_token_id = tokenizer.eos_token_id  # set pad_token_id for LlamaForSeqClass to tell last token position
+            # print(model.score.weight)
         else:
             # model = transformers.AutoModelForSequenceClassification.from_pretrained(
             #     conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
