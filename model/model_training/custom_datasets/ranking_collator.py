@@ -29,17 +29,19 @@ class RankingDataCollator:
         return_length: int = False,
     ) -> list[BatchEncoding]:
         assert self.tokenizer.eos_token
-        # eos = self.tokenizer.eos_token
         
         # for llama2, change the way dialogues are formatted: end every utterance with sep_token instead of eos_token
-        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>" and self.tokenizer.sep_token == "<s>":
-            end_token = self.tokenizer.sep_token
+        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>":
+            prefix_end_token = "\n\n"
+            reply_end_token = ""
         else:
-            end_token = self.tokenizer.eos_token
+            prefix_end_token = self.tokenizer.eos_token
+            reply_end_token = self.tokenizer.eos_token
 
         if isinstance(example, DatasetEntryRm):
             prefix, replies = example.get_formatted(
-                eos_token=end_token,
+                prefix_end_token=prefix_end_token,
+                reply_end_token=reply_end_token,
                 use_system_tag=self.use_system_tag,
                 system_property_dropout=self.system_property_dropout,
                 system_add_length=self.system_add_length,
@@ -60,19 +62,19 @@ class RankingDataCollator:
             if messages is None or len(messages) == 1 and messages[0] is None:
                 # special handling for non-dialogue datasets like Hellaswag
                 prefix = ""
-                replies = [r + end_token for r in replies]
+                replies = [r + reply_end_token for r in replies]
             else:
                 # append eos token to each messages
-                prefix = "".join(format_pairs(messages, eos_token=end_token))
-                replies = [format_reply(r, eos_token=end_token) for r in replies]
+                prefix = "".join(format_pairs(messages, eos_token=prefix_end_token))
+                replies = [format_reply(r, eos_token=reply_end_token) for r in replies]
         # print("*** prefix", prefix)
         # print("*** replies", replies)
 
         prefix_tokens = self.tokenizer(prefix, padding=False, truncation=False)
         reply_tokens = [self.tokenizer(r, padding=False, truncation=False) for r in replies]
         
-        # remove additional <bos> for Llama RM
-        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>" and self.tokenizer.sep_token == "<s>":
+        # remove additional <bos> at the beginning of a reply
+        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>":
             for r in reply_tokens:
                 r["input_ids"] = r["input_ids"][1:]
                 r["attention_mask"] = r["attention_mask"][1:]

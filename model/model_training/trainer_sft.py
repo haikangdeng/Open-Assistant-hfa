@@ -258,7 +258,8 @@ def tokenizer_sanity_check(tokenizer):
     )
     print(ds_entry)
     in_text = ds_entry.get_formatted(
-        tokenizer.eos_token,
+        # tokenizer.eos_token,
+        "\n\n",
         use_system_tag=False,
         system_property_dropout=0,
         system_add_length=False,

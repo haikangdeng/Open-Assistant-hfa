@@ -70,7 +70,7 @@ gold-rm:
   num_train_epochs: 2
   logging_steps: 10
   max_grad_norm: 2.0
-  save_total_limit: 4
+  save_total_limit: 10
   dtype: fp16
   eval_accumulation_steps:
   freeze_layer:
@@ -82,6 +82,7 @@ gold-rm:
     - hellaswag:
         max_val_set: 500
     - webgpt:
+        val_split: 0.2
         max_val_set: 500
     - hf_summary_pairs:
         max_val_set: 500
@@ -125,37 +126,37 @@ llama2-7b-gold-rm:
   datasets:
     - anthropic_rlhf:
         # fraction: 0.1
-        max_val_set: 500
+        max_val_set: 1000
     - shp:
-        max_val_set: 500
+        max_val_set: 1000
     - hellaswag:
         # fraction: 0.5
-        max_val_set: 500
+        max_val_set: 1000
     - webgpt:
         val_split: 0.05
-        max_val_set: 500
+        max_val_set: 1000
     - hf_summary_pairs:
         # fraction: 0.1
-        max_val_set: 500
+        max_val_set: 1000
     - oasst_export:
         # fraction: 0.1
-        max_val_set: 500
+        max_val_set: 1000
   sort_by_length: false
   use_custom_sampler: true
 #   model_name: "meta-llama/Llama-2-7b-hf"
-  model_name: /root/haikang/benchmarking-human-feedback-alignment/oa_out/sft/llama2-7b        # path to reward model with sft weights
-  output_dir: /root/haikang/benchmarking-human-feedback-alignment/oa_out/rm/llama2-7b
-  learning_rate: 2e-6
+  model_name: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b        # path to reward model with sft weights
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b
+  learning_rate: 5e-6
   residual_dropout: 0.0
   weight_decay: 0.0
   max_length: 2048
   use_flash_attention: true
   gradient_checkpointing: true
-  warmup_steps: 500
+  warmup_steps: 1000
   dtype: bf16
   gradient_accumulation_steps: 1
-  per_device_train_batch_size: 16
-  per_device_eval_batch_size: 16
+  per_device_train_batch_size: 12
+  per_device_eval_batch_size: 12
   num_train_epochs: 1
   eval_steps: 1000
   save_steps: 2000
@@ -169,14 +170,18 @@ llama2-7b-gold-rm:
 test:
     datasets:
         - anthropic_rlhf:
-            fraction: 0.1
-            max_val_set: 100
-    per_device_train_batch_size: 2
-    per_device_eval_batch_size: 2
-    eval_steps: 10
+            max_val_set: 500
+    gradient_accumulation_steps: 10
+    per_device_train_batch_size: 12
+    per_device_eval_batch_size: 12
+    eval_steps: 100
+    save_steps: 1000
+    model_name: /root/haikang/benchmarking-human-feedback-alignment/oa_out/sft/llama2-7b/checkpoint-2000
+    output_dir: /root/haikang/benchmarking-human-feedback-alignment/oa_out/rm/llama2-7b-test
+    learning_rate: 5e-6
+    epochs: 1
     # per_device_train_batch_size: 32
     # per_device_eval_batch_size: 32
-    # eval_steps: 20
 
 oasst-rm-1-pythia-6.9b:
   is_reward_model: true

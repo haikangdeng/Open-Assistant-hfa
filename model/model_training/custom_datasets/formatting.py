@@ -162,7 +162,8 @@ class DatasetEntryRm(DatasetEntry):
 
     def get_formatted(
         self,
-        eos_token: str,
+        prefix_end_token: str,
+        reply_end_token: str,
         use_system_tag: bool = False,
         system_property_dropout: float = 0.5,
         system_add_length: bool = False,
@@ -175,7 +176,7 @@ class DatasetEntryRm(DatasetEntry):
         # special handling for non-dialogue datasets like Hellaswag
         if self.messages is None or len(self.messages) == 1 and self.messages[0] is None:
             prefix = ""
-            replies = [r.text + eos_token for r in reply_variants]
+            replies = [r.text + reply_end_token for r in reply_variants]
             return prefix, replies
 
         assert len(self.messages) > 0 and self.messages[-1].role == Role.prompter
@@ -184,18 +185,18 @@ class DatasetEntryRm(DatasetEntry):
         prefix_messages: list[str] = []
         for i, m in enumerate(self.messages):
             if m.role == Role.prompter:
-                prefix_messages.append(f"{QA_SPECIAL_TOKENS['Question']}{m.text}{eos_token}")
+                prefix_messages.append(f"{QA_SPECIAL_TOKENS['Question']}{m.text}{prefix_end_token}")
             else:
                 if use_system_tag:
                     assert m.role == Role.assistant
                     system_tag = m.system_tag(
-                        eos_token=eos_token,
+                        eos_token=prefix_end_token,
                         property_dropout=system_property_dropout,
                         add_length=system_add_length,
                     )
                 else:
                     system_tag = ""
-                prefix_messages.append(f"{system_tag}{QA_SPECIAL_TOKENS['Answer']}{m.text}{eos_token}")
+                prefix_messages.append(f"{system_tag}{QA_SPECIAL_TOKENS['Answer']}{m.text}{prefix_end_token}")
         prefix = "".join(prefix_messages)
 
         #  format reply variants
@@ -204,13 +205,13 @@ class DatasetEntryRm(DatasetEntry):
             assert r.role == Role.assistant
             if use_system_tag:
                 system_tag = r.system_tag(
-                    eos_token=eos_token,
+                    eos_token=prefix_end_token,
                     property_dropout=system_property_dropout,
                     add_length=system_add_length,
                 )
             else:
                 system_tag = ""
-            replies.append(f"{system_tag}{QA_SPECIAL_TOKENS['Answer']}{r.text}{eos_token}")
+            replies.append(f"{system_tag}{QA_SPECIAL_TOKENS['Answer']}{r.text}{reply_end_token}")
 
         return prefix, replies
 

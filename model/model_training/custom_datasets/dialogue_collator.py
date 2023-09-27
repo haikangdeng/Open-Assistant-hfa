@@ -40,9 +40,10 @@ class DialogueDataCollator:
     def __post_init__(self):
         assert self.tokenizer.eos_token
         
-        # for llama2, change the way dialogues are formatted: end every utterance with sep_token instead of eos_token
-        if self.tokenizer.eos_token == "</s>" and self.tokenizer.sep_token == "<s>":
-            self.end_token = self.tokenizer.sep_token
+        # for llama2, change the way dialogues are formatted: end every utterance with \n\n instead of eos_token
+        # TODO: change below line to if self.tokenizer is class LlamaTokenizer:
+        if self.tokenizer.eos_token == "</s>" and self.tokenizer.bos_token == "<s>":
+            self.end_token = "\n\n"
         else:
             self.end_token = self.tokenizer.eos_token
 

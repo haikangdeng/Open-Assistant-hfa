@@ -124,6 +124,7 @@ gold-sft:
     - hellaswag:
         max_val_set: 500
     - webgpt:
+        val_split: 0.2
         max_val_set: 500
     - hf_summary_pairs:
         max_val_set: 500
@@ -330,22 +331,27 @@ oasst-top1:
 llama2-7b-gold-sft:
   dtype: bf16
   log_dir: "llama2_log_7b"
-  learning_rate: 1e-5
+  learning_rate: 5e-6
   model_name: "meta-llama/Llama-2-7b-hf"
-  output_dir: /root/haikang/benchmarking-human-feedback-alignment/oa_out/sft/llama2-7b
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b
   deepspeed_config: configs/zero3_config_sft.json
   weight_decay: 0.0
   max_length: 2048
   warmup_steps: 500
   gradient_checkpointing: true
   gradient_accumulation_steps: 1
-  per_device_train_batch_size: 32
-  per_device_eval_batch_size: 32
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
   eval_steps: 2000
-  save_steps: 1000
+  save_steps: 2000
   num_train_epochs: 1
-  save_total_limit: 10
+  save_total_limit: 15
   use_flash_attention: true
+
+rlhf-only:
+  datasets:
+    - anthropic_rlhf:
+        max_val_set: 500
 
 falcon-7b:
   dtype: bf16

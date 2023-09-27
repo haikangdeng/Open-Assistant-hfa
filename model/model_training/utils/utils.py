@@ -241,7 +241,7 @@ def get_tokenizer(conf) -> transformers.AutoTokenizer:
 
     tokenizer.add_special_tokens({"additional_special_tokens": additional_special_tokens})
     
-    print(f'*** tokenizer.pad_token: {tokenizer.pad_token} ***')
+    # print(f'*** tokenizer.pad_token: {tokenizer.pad_token} ***')
 
     return tokenizer
 
@@ -320,6 +320,10 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 conf.model_name, num_labels=1, torch_dtype=dtype, device_map="auto"
             )
             model.config.pad_token_id = tokenizer.eos_token_id  # set pad_token_id for LlamaForSeqClass to tell last token position
+            # for param in model.base_model.parameters():
+            #     param.requires_grad = False
+            # for param in model.score.parameters():
+            #     param.requires_grad = True
             # print(model.score.weight)
         else:
             # model = transformers.AutoModelForSequenceClassification.from_pretrained(
@@ -359,6 +363,7 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([p.numel() for p in model_parameters])
     print("Number of trainable parameters: {}M".format(int(params / 1e6)))
+    # print("Number of trainable parameters: {}".format(params))
 
     patch_model(
         model,

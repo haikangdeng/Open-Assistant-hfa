@@ -35,6 +35,7 @@ from model_training.custom_datasets.toxic_conversation import ProsocialDialogue,
 from model_training.custom_datasets.translation import WMT2019, DiveMT, TEDTalk
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, Subset
+from datasets import DatasetDict
 
 QA_DATASETS = list(QADataset.DATASET_FORMAT_MAPPING.keys())
 
@@ -58,23 +59,32 @@ OTHER = [
 
 RL_DATASETS = [
     "oasst_export",
+    "synthesized_oasst_export",
     "webgpt",
+    "synthesized_webgpt",
     "private_tuning",
     "alpaca",
     "hf_summary",
     "hf_summary_pairs",
+    "synthesized_hf_summary_pairs",
     "vicuna",
 ]
 
 RM_DATASETS = [
     "oasst_export",
+    "synthesized_oasst_export",
     "augment_oasst",
     "anthropic_rlhf",
+    "synthesized_anthropic_rlhf",
     "hf_summary",
     "hf_summary_pairs",
+    "synthesized_hf_summary_pairs",
     "shp",
+    "synthesized_shp"
     "hellaswag",
+    "synthesized_hellaswag",
     "webgpt",
+    "synthesized_webgpt",
 ]
 
 
@@ -87,7 +97,7 @@ def train_val_dataset(dataset, val_split=0.2) -> tuple[Dataset, Dataset | None]:
     )
     return Subset(dataset, train_idx), Subset(dataset, val_idx)
 
-
+# TODO: add syn_xx
 def get_one_dataset(
     conf,
     dataset_name: str,
@@ -188,6 +198,16 @@ def get_one_dataset(
         dataset = OrcaChat(cache_dir=data_path, **kwargs)
     elif dataset_name == "dolphin-mix":
         dataset = DolphinMix(cache_dir=data_path, **kwargs)
+        
+    # elif 
+    #    dataset = SynXX
+    # class SynXX {
+    #    dataset = DatasetDict.load_from_disk("synthesized_anthropic_rlhf")
+    # }
+    elif dataset_name == "synthesized_anthropic_rlhf":
+        dataset = DatasetDict.load_from_disk("synthesized_anthropic_rlhf")
+        train, eval = dataset["train"], dataset["eval"]
+        
     elif dataset_name in RAG_DATASETS.keys():
         dataset = RAGDataset(dataset_name, cache_dir=data_path, **kwargs)
     else:
