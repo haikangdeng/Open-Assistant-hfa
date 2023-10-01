@@ -133,7 +133,7 @@ llama2-7b-gold-rm:
         # fraction: 0.5
         max_val_set: 1000
     - webgpt:
-        val_split: 0.05
+        val_split: 0.2
         max_val_set: 1000
     - hf_summary_pairs:
         # fraction: 0.1
@@ -145,7 +145,7 @@ llama2-7b-gold-rm:
   use_custom_sampler: true
 #   model_name: "meta-llama/Llama-2-7b-hf"
   model_name: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b        # path to reward model with sft weights
-  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b-backup
   learning_rate: 5e-6
   residual_dropout: 0.0
   weight_decay: 0.0

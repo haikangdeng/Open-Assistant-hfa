@@ -159,8 +159,23 @@ class HFSummaryPairs(Dataset):
             return (prompt.format(context),)
         elif self.mode == "rm":
             return [prompt.format(context)], [good_summary, bad_summary]
-
+        
         raise RuntimeError(f"Unsupported mode '{self.mode}'")
+    
+    # # for synthesizing data
+    # def get_raw_item(self, index: int) -> tuple | list:
+    #     good_summary, bad_summary = self.summary_pairs[index]
+    #     return [self.posts[index]], (good_summary, bad_summary)
+    
+    # def set_raw_item(self, index: int, value: tuple[list[str], tuple[str, str]]) -> None:
+    #     self.summary_pairs[index] = tuple(value[1])       # tuple[str, str]
+        
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.summary_pairs[index] = tuple([self.summary_pairs[index][j] for j in new_order])
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
 
 
 class HFSummary(Dataset):

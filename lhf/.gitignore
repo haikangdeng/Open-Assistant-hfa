@@ -2,5 +2,5 @@ saved_models/gold-rm/*
 !saved_models/gold-rm/.gitkeep
 saved_models/gold-sft/*
 !saved_models/gold-sft/.gitkeep
-synthesized_data/*
-!synthesized_data/.gitkeep
+synthetic_data/*
+!synthetic_data/.gitkeep

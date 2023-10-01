@@ -1,43 +1,6 @@
-#%%
-# for pairs only
-# helper function
+# TODO: check metrics returning acc=0.0 and kendalltau=nan
+#       line228: results = compute_metrics(tiled_eval_preds) 
 
-from model_training.custom_datasets.extra_rm_datasets import load_anthropic_rlhf
-dataset = load_anthropic_rlhf()
-dataset
-
-
-#%%
-syn_rlhf = DatasetDict()
-for split in rlhf:
-    data = rlhf[split]
-    gold_labels = [0] * len(data)    # positive > negative
-    gold_chosen, gold_rejected = [], []
-    for (pos, neg, gl) in zip(data['chosen'], data['rejected'], gold_labels):
-        if gl:
-            gold_chosen.append(pos)
-            gold_rejected.append(neg)
-        else:
-            gold_chosen.append(neg)
-            gold_rejected.append(pos)
-    
-    syn_split = Dataset.from_dict({'chosen': gold_chosen, 'rejected': gold_rejected})
-    syn_rlhf[split] = syn_split
-    
-syn_rlhf.save_to_disk("synthesized_anthropic_rlhf")
-
-
-#%%
-import torch
-
-
-a = torch.tensor([0,1,2])
-b = torch.empty(0,0)
-b = torch.cat((b,a), dim=1)
-torch.cat((b,a), dim=1)
-
-
-#%%
 import argparse
 import os
 from collections import defaultdict
@@ -47,7 +10,7 @@ import torch
 import transformers
 import datasets
 from datasets import load_dataset, Dataset, DatasetDict
-from model.model_training.utils.utils import (
+from model_training.utils.utils import (
     _strtobool,
     get_dataset,
     get_model,
@@ -55,18 +18,20 @@ from model.model_training.utils.utils import (
     init_rng,
     read_yamls,
 )
-from model.model_eval.eval_rm import batch_inference
-from model.model_training.utils.utils import get_dataset_name_and_kwargs_from_data_config
-from model.model_training.custom_datasets import get_one_dataset
-from model.model_training.custom_datasets.ranking_collator import RankingDataCollator
-from model.model_training.metrics import RewardMetrics
+from model_training.utils.utils import get_dataset_name_and_kwargs_from_data_config
+from model_training.custom_datasets import get_one_dataset
+from model_training.custom_datasets.ranking_collator import RankingDataCollator
+from model_training.metrics import RewardMetrics
+from model_training.custom_datasets.extra_rm_datasets import load_anthropic_rlhf, load_shp, load_hellaswag
+from model_training.custom_datasets.oasst_dataset import load_oasst_export
 from transformers.trainer_pt_utils import IterableDatasetShard
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from transformers.trainer_utils import EvalPrediction, seed_worker
 import numpy as np
 from tqdm import tqdm
-from model.model_training.custom_datasets.extra_rm_datasets import load_anthropic_rlhf
+import pickle
+import json
 
 
 def batch_inference(inputs, model):
@@ -82,33 +47,51 @@ def batch_inference(inputs, model):
         # Until Numpy adds bfloat16, we must convert float32.
         logits = logits.to(torch.float32)
     logits = logits.numpy().reshape(-1)
-
-    labels = []
-    for i, (s, e) in enumerate(zip(cu_lens[:-1], cu_lens[1:])):
-        labels.extend([i] * (e - s))
-    labels = np.array(labels).reshape(-1)
+    labels = cu_lengths_to_labels(cu_lens)
     return EvalPrediction(predictions=logits, label_ids=labels)
 
 
-def tile_eval_predictions(eval_predictions: list[EvalPrediction]) -> EvalPrediction:
-    predictions = torch.empty(0)
+# for example labels=[0,0,0,1,1,1,1,2,2,3,3] should result in cu_lengths=[0,3,7,9,11]
+def labels_to_cu_lengths(labels: np.ndarray) -> list[int]:
     cu_lengths = [0]
+    for i in range(1, len(labels)):
+        if labels[i] != labels[i-1]:
+            cu_lengths.append(i)
+    cu_lengths.append(len(labels))
+    return cu_lengths
+
+
+def cu_lengths_to_labels(cu_lengths: list[int]) -> np.ndarray:
+    labels = []
+    for i, (s, e) in enumerate(zip(cu_lengths[:-1], cu_lengths[1:])):
+        labels.extend([i] * (e - s))
+    labels = np.array(labels).reshape(-1)
+    return labels
+
+
+def tile_eval_predictions(eval_predictions: list[EvalPrediction]) -> EvalPrediction:
+    predictions = []
+    labels = [-1]
+    # cu_lengths = [0]
     for p in eval_predictions:
-        predictions = torch.cat(predictions, p.predictions.reshape(-1), dim=0)
-        # for example [0,2,4,6] and [0,3,6] should result in [0,2,4,6,9,12]
-        cu_lengths.extend([x + cu_lengths[-1] for x in p.cu_lengths[1:]])
-    return EvalPrediction(predictions=predictions, label_ids=cu_lengths)
+        # predictions = torch.cat((predictions, p.predictions.reshape(-1)), dim=0)
+        predictions.extend(p.predictions)
+        # labels = [0,0,1,1] with p.label_ids=[0,0,1,1,1] should result in [0,0,1,1,2,2,3,3,3]
+        # labels = [0,1,2] with p.label_ids=[0,0,0,1,1,2] should result in [0,1,2,3,3,3,4,4,5]
+        labels.extend([(labels[-1]+1) + x for x in p.label_ids])
+    return EvalPrediction(predictions=np.array(predictions), label_ids=np.array(labels[1:]))
 
 
 def get_gold_labels(tiled_eval_predictions: EvalPrediction) -> list[list[int]]:
     logits = tiled_eval_predictions.predictions
-    cu_lengths = tiled_eval_predictions.cu_lengths
+    labels = tiled_eval_predictions.label_ids
+    cu_lengths = labels_to_cu_lengths(labels)
 
     gold_labels = []
     for start, end in zip(cu_lengths[:-1], cu_lengths[1:]):
         logits_group = logits[start:end]
         # return sorted order for each group (e.g. [0,1] or [1,0] for pairs, [4,2,0,1,3] for rankings)
-        gold_label = torch.argsort(logits_group, descending=True).cpu().tolist()
+        gold_label = np.argsort(logits_group)[::-1].tolist()    # descending order
         gold_labels.append(gold_label)
     return gold_labels
 
@@ -121,22 +104,21 @@ def get_dataloader(conf, data, collate_fn):
     rewrite from:
     https://github.com/huggingface/transformers/blob/67d074874d285e616393c65a0e670088e1b6b74a/src/transformers/trainer.py#L846
     """
-
-    if isinstance(data, torch.utils.data.IterableDataset):
-        # if we are using iterable dataset it means no weight sampling
-        # added for backward compat
-        if conf.world_size > 1:
-            data = IterableDatasetShard(
-                data,
-                batch_size=conf.per_device_eval_batch_size,
-                num_processes=conf.world_size,
-            )
-        return DataLoader(
-            data,
-            batch_size=conf.per_device_eval_batch_size,
-            collate_fn=collate_fn,
-        )
-
+    # if isinstance(data, torch.utils.data.IterableDataset):
+    #     # if we are using iterable dataset it means no weight sampling
+    #     # added for backward compat
+    #     if conf.world_size > 1:
+    #         data = IterableDatasetShard(
+    #             data,
+    #             batch_size=conf.per_device_eval_batch_size,
+    #             num_processes=conf.world_size,
+    #         )
+    #     return DataLoader(
+    #         data,
+    #         batch_size=conf.per_device_eval_batch_size,
+    #         collate_fn=collate_fn,
+    #         worker_init_fn=seed_worker,
+    #     )
     dataloader = DataLoader(
         data,
         batch_size=conf.per_device_eval_batch_size,
@@ -146,41 +128,53 @@ def get_dataloader(conf, data, collate_fn):
     return dataloader
 
 
+DATASETS = [
+    "anthropic_rlhf",
+    "shp",
+    "hellaswag",
+    "hf_summary_pairs",
+    "webgpt",
+    "oasst_export",
+]
+
+
 def helper(dataset_name, gold_labels_list):
-    syn_dataset_name = "synthesized_" + dataset_name
+    syn_dataset_name = "synthetic_" + dataset_name + ".pkl"
     syn_dataset = DatasetDict()
     split_strings = ['train','eval']
-    # TODO: create and save synthesized_dataset
     
     # TODO: specific rules for 6 datasets
+    if dataset_name == "webgpt":
+        dataset = get_one_dataset(None, dataset_name=dataset_name, mode="rm")
+        for (split_string, split, gold_labels) in zip(split_strings, dataset, gold_labels_list):
+            for i, gl in enumerate(gold_labels):
+                split[i].replies = [split[i].replies[j] for j in gl]
+            syn_dataset[split_string] = split
+            
+        with open(os.path.join("synthetic_data", syn_dataset_name), "wb") as file:
+            pickle.dump(syn_dataset, file)
+        # dataset.save_to_disk(os.path.join("synthetic_data", syn_dataset_name))
+        return
+    
     if dataset_name == "anthropic_rlhf":
         dataset = load_anthropic_rlhf()    # (train, eval)
-        for (split_string, data, gold_labels) in zip(split_strings, dataset, gold_labels_list):
-            gold_chosen, gold_rejected = [], []
-            for (cho, rej, gl) in zip(data['chosen'], data['rejected'], gold_labels):
-                if gl[0]==0 and gl[1]==1:    # [0,1] -> same order
-                    gold_chosen.append(cho)
-                    gold_rejected.append(rej)
-                else:   # [1,0] -> reverse order
-                    gold_chosen.append(rej)
-                    gold_rejected.append(cho)
-            
-            syn_split = Dataset.from_dict({'chosen': gold_chosen, 'rejected': gold_rejected})
-            syn_dataset[split_string] = syn_split
-            
-        syn_dataset.save_to_disk(syn_dataset_name)
-        return
-    # elif dataset_name == "hf_summary_pairs":
+    elif dataset_name == "shp":
+        dataset = load_shp()
+    elif dataset_name == "hellaswag":
+        dataset = load_hellaswag()
+    elif dataset_name == "hf_summary_pairs":
+        dataset = get_one_dataset(None, dataset_name=dataset_name, mode="rm")
+    elif dataset_name == "oasst_export":
+        dataset = load_oasst_export(mode="rm")
+    else:
+        raise ValueError(f"Invalid dataset name, available {DATASETS}")
         
-    # elif dataset_name == "shp":
-        
-    # elif dataset_name == "webgpt":
-        
-    # elif dataset_name == "oasst_export":
-        
-    # elif dataset_name == "hellaswag":
-        
-        
+    for (split_string, split, gold_labels) in zip(split_strings, dataset, gold_labels_list):
+        split.reorder_replies(gold_labels)
+        syn_dataset[split_string] = split
+    with open(os.path.join("synthetic_data", syn_dataset_name), "wb") as file:
+        pickle.dump(syn_dataset, file)
+    # syn_dataset.save_to_disk(os.path.join("syntheticd_data", syn_dataset_name))
     # TODO later: add routing rules for SynDatasets in custom_datsets/__init__.py & rank/qa datasets
     
 
@@ -199,13 +193,13 @@ def main():
         tokenizer,
         max_length=conf.max_length,
         pad_to_multiple_of=16,
-        # max_replies=conf.max_replies,
-        max_replies=None,       # set max_replies to unlimited to go over all replies
+        max_replies=conf.max_replies,
+        # max_replies=np.inf(),       # set max_replies to unlimited to go over all replies
         use_system_tag=conf.use_system_tag,
         system_property_dropout=conf.system_property_dropout,
         system_add_length=conf.system_add_length,
     )
-        
+
     # loop over datasets
     for data_config in conf.datasets + conf.datasets_extra:
         dataset_name, kwargs = get_dataset_name_and_kwargs_from_data_config(data_config)
@@ -214,8 +208,8 @@ def main():
         gold_labels_list = []
         
         compute_metrics = RewardMetrics(conf.metrics)
-        score_dict = defaultdict(float)
         
+        report = {}
         split_strings = ["train", "eval"]
         for (split, split_string) in zip(dataset, split_strings):
             eval_preds = []
@@ -223,31 +217,36 @@ def main():
             for i, data in enumerate(tqdm(data)):
                 eval_pred = batch_inference(data, model)
                 eval_preds.append(eval_pred)
-                results = compute_metrics(eval_pred)
-                for metric in conf.metrics:
-                    score_dict[metric] += results.get(metric)
                     
-            score_dict = {k: str(round(v / len(dataset), 3)) for k, v in score_dict.items()}
+            tiled_eval_preds = tile_eval_predictions(eval_preds)
+            gold_labels = get_gold_labels(tiled_eval_preds)
+            # assert len(gold_labels) == len(split)   # same as the number (of groups) of examples in split
+            print("***", len(gold_labels), len(split), "***")
+            gold_labels_list.append(gold_labels)
+            
+            score_dict = defaultdict(float)
+            tiled_eval_preds.predictions = tiled_eval_preds.predictions.reshape(1,-1)
+            tiled_eval_preds.label_ids = tiled_eval_preds.label_ids.reshape(1,-1)
+            results = compute_metrics(tiled_eval_preds)
+            for metric in conf.metrics:
+                score_dict[metric] = results.get(metric)
+            score_dict = {k: str(round(v, 3)) for k, v in score_dict.items()}
             results = {
                 "dataset": dataset_name,
                 "split": split_string,
             }
             results.update(score_dict)
             print("RESULTS", results)
-            
-            tiled_eval_preds = tile_eval_predictions(eval_preds)
-            gold_labels = get_gold_labels(tiled_eval_preds)
-            assert len(gold_labels) == len(split)   # same as the number (of groups) of examples in split
-            
-            gold_labels_list.append(gold_labels)
+            report[split_string] = results
         
         # call helper function to save
         helper(dataset_name, gold_labels_list)
         
+        # save report as json file, use dataset_name as filename
+        with open(os.path.join("synthetic_data", 
+                               "synthetic_" + dataset_name + "_report.json"), "w") as file:
+            json.dump(report, file)
         
-        
-
-
 
 def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None = None):
     parser = argparse.ArgumentParser()
@@ -268,7 +267,7 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
 
     # Config from YAML
     conf = {}
-    configs = read_yamls("./configs")
+    configs = read_yamls("../model/model_training/configs")
     for name in args.configs:
         if "," in name:
             for n in name.split(","):
@@ -303,3 +302,15 @@ def argument_parsing(notebook: bool = False, notebook_args: Sequence[str] | None
 
 if __name__ == "__main__":
     main()
+    
+# # %%
+# # len(split) == 6
+# eval_pred_1 = EvalPrediction(predictions=np.array([0,1,2, 2,1,0, 1,0,3,2]), label_ids=[0,0,0,1,1,1,2,2,2,2])
+# eval_pred_2 = EvalPrediction(predictions=np.array([0,1,-1, -1,1,0, 1,0,-1,2]), label_ids=[0,0,0,1,1,1,2,2,2,2])
+
+# eval_preds = [eval_pred_1, eval_pred_2]
+# tiled_eval_preds = tile_eval_predictions(eval_preds)
+# gold_labels = get_gold_labels(tiled_eval_preds)
+# gold_labels
+# # %%
+# # [[2, 1, 0], [0, 1, 2], [2, 3, 0, 1], [1, 0, 2], [1, 2, 0], [3, 0, 1, 2]]

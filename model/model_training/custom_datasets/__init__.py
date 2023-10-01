@@ -36,6 +36,8 @@ from model_training.custom_datasets.translation import WMT2019, DiveMT, TEDTalk
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, Subset
 from datasets import DatasetDict
+import os
+import pickle
 
 QA_DATASETS = list(QADataset.DATASET_FORMAT_MAPPING.keys())
 
@@ -59,32 +61,32 @@ OTHER = [
 
 RL_DATASETS = [
     "oasst_export",
-    "synthesized_oasst_export",
+    "synthetic_oasst_export",
     "webgpt",
-    "synthesized_webgpt",
+    "synthetic_webgpt",
     "private_tuning",
     "alpaca",
     "hf_summary",
     "hf_summary_pairs",
-    "synthesized_hf_summary_pairs",
+    "synthetic_hf_summary_pairs",
     "vicuna",
 ]
 
 RM_DATASETS = [
     "oasst_export",
-    "synthesized_oasst_export",
+    "synthetic_oasst_export",
     "augment_oasst",
     "anthropic_rlhf",
-    "synthesized_anthropic_rlhf",
+    "synthetic_anthropic_rlhf",
     "hf_summary",
     "hf_summary_pairs",
-    "synthesized_hf_summary_pairs",
+    "synthetic_hf_summary_pairs",
     "shp",
-    "synthesized_shp"
+    "synthetic_shp",
     "hellaswag",
-    "synthesized_hellaswag",
+    "synthetic_hellaswag",
     "webgpt",
-    "synthesized_webgpt",
+    "synthetic_webgpt",
 ]
 
 
@@ -113,7 +115,9 @@ def get_one_dataset(
     if mode == "rm":
         assert dataset_name in RM_DATASETS, f"Dataset {dataset_name} not supported for reward modeling"
 
-    data_path = data_path or conf.cache_dir
+    if conf is not None:
+        data_path = data_path or conf.cache_dir
+    
     dataset_name = dataset_name.lower()
 
     if dataset_name in QA_DATASETS:
@@ -198,15 +202,15 @@ def get_one_dataset(
         dataset = OrcaChat(cache_dir=data_path, **kwargs)
     elif dataset_name == "dolphin-mix":
         dataset = DolphinMix(cache_dir=data_path, **kwargs)
-        
-    # elif 
-    #    dataset = SynXX
-    # class SynXX {
-    #    dataset = DatasetDict.load_from_disk("synthesized_anthropic_rlhf")
-    # }
-    elif dataset_name == "synthesized_anthropic_rlhf":
-        dataset = DatasetDict.load_from_disk("synthesized_anthropic_rlhf")
-        train, eval = dataset["train"], dataset["eval"]
+    # synthetic data
+    elif dataset_name[:9] == "synthetic":
+        pkl_file = dataset_name + ".pkl"
+        pkl_file = os.path.join(conf.lhf_directory,"synthetic_data", pkl_file)
+        with open(pkl_file, "rb") as file:
+            syn_data = pickle.load(file)
+        orig_train, orig_eval = syn_data["train"], syn_data["eval"]
+        # split the original train set into train and eval
+        train, eval = train_val_dataset(orig_train, val_split=val_split)
         
     elif dataset_name in RAG_DATASETS.keys():
         dataset = RAGDataset(dataset_name, cache_dir=data_path, **kwargs)

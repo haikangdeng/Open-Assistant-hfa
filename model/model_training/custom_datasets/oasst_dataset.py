@@ -18,6 +18,13 @@ class ListDataset(Dataset):
 
     def __getitem__(self, index):
         return self.data[index]
+    
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.data[index] = (self.data[index][0], [self.data[index][1][j] for j in new_order])
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
 
 
 def load_oasst_export(

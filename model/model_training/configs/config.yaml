@@ -333,7 +333,7 @@ llama2-7b-gold-sft:
   log_dir: "llama2_log_7b"
   learning_rate: 5e-6
   model_name: "meta-llama/Llama-2-7b-hf"
-  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b-backup
   deepspeed_config: configs/zero3_config_sft.json
   weight_decay: 0.0
   max_length: 2048

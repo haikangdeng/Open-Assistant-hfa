@@ -227,6 +227,19 @@ class WebGPT(Dataset):
     def __getitem__(self, index) -> DatasetEntry:
         dialogue = self.rows[index]
         return dialogue
+    
+    # def get_raw_item(self, index: int) -> tuple[list[str], list[str]]:
+    #     return self.__getitem__(index)
+    
+    # def set_raw_item(self, index: int, value: tuple[list[str], list[str]]) -> None:
+    #     self.rows[index]
+        
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.rows[index].replies = [self.rows[index].replies[j] for j in new_order]     # reorder dataset_entry.replies
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
 
 
 class SODA(Dataset):

@@ -49,6 +49,13 @@ class SHPDataset(Dataset):
 
     def __getitem__(self, index):
         return [self.questions[index]], self.answers[index]
+        
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.answers[index] = [self.answers[index][j] for j in new_order]
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
 
 
 class HellaSwagDataset(Dataset):
@@ -83,6 +90,13 @@ class HellaSwagDataset(Dataset):
     def __getitem__(self, idx) -> tuple[str | None, list[list]]:
         context, completions = self.dataset_list[idx].values()
         return None, [context + c for c in completions]
+        
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.dataset_list[index]["completions"] = [self.dataset_list[index]["completions"][j] for j in new_order]
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
 
 
 class HFDataset(Dataset):
@@ -241,5 +255,12 @@ class AnthropicRLHF(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, index: int) -> tuple[str, list[str]]:
+    def __getitem__(self, index: int) -> tuple[list[str], list[str]]:
         return self.data[index]
+        
+    def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
+        self.data[index] = (self.data[index][0], [self.data[index][1][j] for j in new_order])
+    
+    def reorder_replies(self, new_order_list: list[list[int]]) -> None:
+        for i, new_order in enumerate(new_order_list):
+            self.reorder_replies_single(i, new_order)
