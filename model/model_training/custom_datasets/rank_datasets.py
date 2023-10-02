@@ -8,6 +8,8 @@ from torch.utils.data import Dataset
 
 SEED = 2020
 
+# rm dataset should return items in the format of Tuple[List[str], List[str]] including context list and reply list as elements
+# sft dataset should return items in the format of List[str] including context(s) and chosen reply as elements
 
 class SHPDataset(Dataset):
     """
@@ -16,11 +18,13 @@ class SHPDataset(Dataset):
 
     name = "SHP"
 
-    def __init__(self, split: str | list[str] | None, max_answers: int = 5):
+    def __init__(self, split: str | list[str] | None, max_answers: int = 5, mode="rm"):
         super().__init__()
 
         self.questions = []
         self.answers = []
+        assert mode in ("sft", "rm", "rl")
+        self.mode = mode
 
         if not isinstance(split, list):
             split = [split]
@@ -48,7 +52,10 @@ class SHPDataset(Dataset):
         return len(self.questions)
 
     def __getitem__(self, index):
-        return [self.questions[index]], self.answers[index]
+        if self.mode == "sft":
+            return [self.questions[index], self.answers[index][0]]      # only finetune on good reply
+        else:
+            return [self.questions[index]], self.answers[index]
         
     def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
         self.answers[index] = [self.answers[index][j] for j in new_order]
@@ -57,6 +64,21 @@ class SHPDataset(Dataset):
         for i, new_order in enumerate(new_order_list):
             self.reorder_replies_single(i, new_order)
 
+
+# add prompts and modify the format of replies
+HELLASWAG_PROMPTS = [
+    "Complete the sentence with commonsense knowledge: {}",
+    "Finish the statement using your common sense: {}",
+    "Fill in the blank with common knowledge: {}",
+    "Use your common sense to complete the following sentence: {}",
+    "Provide a commonsense completion for the sentence: {}",
+    "Complete the following sentence based on common knowledge: {}",
+    "Use your intuition to finish the sentence: {}",
+    "Fill in the blank with commonsense: {}",
+    "Complete this statement with your commonsense understanding: {}",
+    "Finish the sentence using commonsense reasoning: {}",
+    "{}\nComplete the sentence with commonsense knowledge.",
+]
 
 class HellaSwagDataset(Dataset):
     """
@@ -68,11 +90,14 @@ class HellaSwagDataset(Dataset):
 
     name = "hellaswag"
 
-    def __init__(self, split: str | list[str] | None, seed: int = SEED) -> None:
+    def __init__(self, split: str | list[str] | None, seed: int = SEED, mode="rm") -> None:
         super().__init__()
 
         np.random.seed(seed)
         self.dataset_list = []
+        assert mode in ("sft", "rm", "rl")
+        self.mode = mode
+        
         if not isinstance(split, List):
             split = [split]
         dataset = load_dataset("AlekseyKorshuk/hellaswag", split=split)
@@ -87,9 +112,13 @@ class HellaSwagDataset(Dataset):
     def __len__(self) -> int:
         return len(self.dataset_list)
 
-    def __getitem__(self, idx) -> tuple[str | None, list[list]]:
+    def __getitem__(self, idx):
         context, completions = self.dataset_list[idx].values()
-        return None, [context + c for c in completions]
+        prompt = random.choice(HELLASWAG_PROMPTS)
+        if self.mode == "sft":
+            return [prompt.format(context), completions[0]]      # only finetune on good reply
+        else:
+            return [prompt.format(context)], completions
         
     def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
         self.dataset_list[index]["completions"] = [self.dataset_list[index]["completions"][j] for j in new_order]
@@ -99,6 +128,7 @@ class HellaSwagDataset(Dataset):
             self.reorder_replies_single(i, new_order)
 
 
+# Not customized for sft and data synthesizing
 class HFDataset(Dataset):
     """
     Dataset class to use data from openai/summarize_from_feedback for Reward modeling.
@@ -161,6 +191,7 @@ class HFDataset(Dataset):
         return [post], summaries
 
 
+# Not customized for sft and data synthesizing
 class AugmentedOA(Dataset):
     def __init__(self, json_filename: str, split: str = "train") -> None:
         super().__init__()
@@ -206,6 +237,7 @@ class AnthropicRLHF(Dataset):
         # same speaker (OA v1 expects alternating roles)
         role = None
         messages = []
+        
         for line in lines:
             if line.startswith("Human:"):
                 speaker = "Human"
@@ -227,11 +259,14 @@ class AnthropicRLHF(Dataset):
 
         return dialogue
 
-    def __init__(self, split: str = "train") -> None:
+    def __init__(self, split: str = "train", mode="rm") -> None:
         super().__init__()
         assert split in ("train", "test")
         self.split = split
         self.data = []
+        assert mode in ("sft", "rm", "rl")
+        self.mode = mode
+        
         dataset = load_dataset("Anthropic/hh-rlhf")[split]
 
         for entry in dataset:
@@ -255,8 +290,15 @@ class AnthropicRLHF(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def __getitem__(self, index: int) -> tuple[list[str], list[str]]:
-        return self.data[index]
+    def __getitem__(self, index: int):
+        if self.mode == "sft":
+            (prefix, [good_reply, bad_reply]) = self.data[index]
+            if isinstance(prefix, list):
+                return prefix + [good_reply]      # only finetune on good reply
+            else:
+                return [prefix, good_reply]
+        else:
+            return self.data[index]
         
     def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
         self.data[index] = (self.data[index][0], [self.data[index][1][j] for j in new_order])

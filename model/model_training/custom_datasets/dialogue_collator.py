@@ -86,7 +86,7 @@ class DialogueDataCollator:
             truncation=truncation,
             padding=False,
         )
-
+        
         if pretrain_dataset:
             label_mask = np.ones(len(flatten_message.input_ids), dtype=bool)
             return flatten_message, label_mask, 0

@@ -181,11 +181,11 @@ def get_one_dataset(
     elif dataset_name == "oig_file":
         train, eval = load_oig_file(val_split=val_split, **kwargs)
     elif dataset_name == "anthropic_rlhf":
-        train, eval = load_anthropic_rlhf()
+        train, eval = load_anthropic_rlhf(mode=mode)
     elif dataset_name == "shp":
-        train, eval = load_shp()
+        train, eval = load_shp(mode=mode)
     elif dataset_name == "hellaswag":
-        train, eval = load_hellaswag()
+        train, eval = load_hellaswag(mode=mode)
     elif dataset_name == "dolly15k":
         dataset = DatabricksDolly15k(cache_dir=data_path, mode=mode, **kwargs)
     elif dataset_name == "dolly15k_multilingual":
