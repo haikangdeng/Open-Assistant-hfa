@@ -1,0 +1,1 @@
+{"train": {"dataset": "anthropic_rlhf", "split": "train", "accuracy": "0.684", "kendalltau": "0.368"}, "eval": {"dataset": "anthropic_rlhf", "split": "eval", "accuracy": "0.673", "kendalltau": "0.347"}}

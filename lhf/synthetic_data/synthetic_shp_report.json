@@ -1,0 +1,1 @@
+{"train": {"dataset": "shp", "split": "train", "accuracy": "0.678", "kendalltau": "0.231"}, "eval": {"dataset": "shp", "split": "eval", "accuracy": "0.656", "kendalltau": "0.208"}}

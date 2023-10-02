@@ -99,3 +99,48 @@ for i in range(len(hf_eval)):
     arg_neg = syn_eval[i][1].index(neg)
     correct.append(arg_pos < arg_neg)
 print(np.mean(correct))
+
+
+#%%
+from model_training.custom_datasets import get_one_dataset
+import numpy as np
+from model_training.custom_datasets.formatting import format_pairs
+from model_training.custom_datasets.extra_rm_datasets import load_anthropic_rlhf, load_shp, load_hellaswag
+from model_training.custom_datasets.dialogue_collator import DialogueDataCollator
+from model_training.custom_datasets.ranking_collator import RankingDataCollator
+import transformers
+
+class Namespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+conf = Namespace(lhf_directory="/root/haikang/Open-Assistant-hfa/lhf", cache_dir=None)        
+tokenizer = transformers.AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+
+#%%
+'''
+    - anthropic_rlhf
+    - shp
+    - hellaswag
+    - webgpt:
+        val_split: 0.2
+    - hf_summary_pairs
+    - oasst_export:
+        val_split: 0.2
+'''
+dataset_name = "anthropic_rlhf"     #notok
+dataset_name = "shp"                #ok
+# dataset_name = "hellaswag"          #ok
+# dataset_name = "webgpt"             #ok
+# dataset_name = "hf_summary_pairs"   #ok
+# dataset_name = "oasst_export"         #ok
+train, eval = get_one_dataset(conf, dataset_name=dataset_name, mode="sft")
+
+# %%
+train.mode = 'sft'
+collate_fn = DialogueDataCollator(tokenizer)
+# collate_fn = RankingDataCollator(tokenizer)
+print(train[11])
+message = collate_fn.process_one(train[11])
+
+# %%
