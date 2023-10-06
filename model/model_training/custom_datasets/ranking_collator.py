@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from transformers import LlamaTokenizer, LlamaTokenizerFast
 from model_training.custom_datasets.formatting import DatasetEntryRm
 from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy, PreTrainedTokenizerBase
 
@@ -31,7 +32,7 @@ class RankingDataCollator:
         assert self.tokenizer.eos_token
         
         # for llama2, change the way dialogues are formatted: end every utterance with sep_token instead of eos_token
-        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>":
+        if isinstance(self.tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
             prefix_end_token = "\n\n"
             reply_end_token = ""
         else:
@@ -73,8 +74,8 @@ class RankingDataCollator:
         prefix_tokens = self.tokenizer(prefix, padding=False, truncation=False)
         reply_tokens = [self.tokenizer(r, padding=False, truncation=False) for r in replies]
         
-        # remove additional <bos> at the beginning of a reply
-        if self.tokenizer.bos_token == "<s>" and self.tokenizer.eos_token == "</s>":
+        # remove additional <s> at the beginning of a reply
+        if isinstance(self.tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
             for r in reply_tokens:
                 r["input_ids"] = r["input_ids"][1:]
                 r["attention_mask"] = r["attention_mask"][1:]

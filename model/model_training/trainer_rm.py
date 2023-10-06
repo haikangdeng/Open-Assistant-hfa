@@ -12,6 +12,7 @@ from model_training.utils.utils import (
     PerDatasetSampler,
     _strtobool,
     get_dataset,
+    get_dataset_rm,
     get_loss,
     get_model,
     get_tokenizer,
@@ -190,7 +191,7 @@ def main():
     tokenizer = get_tokenizer(training_conf)
     model = get_model(training_conf, tokenizer)
 
-    train, evals = get_dataset(training_conf, mode="rm")
+    train, evals = get_dataset_rm(training_conf, mode="rm")
     train_collate_fn = RankingDataCollator(
         tokenizer,
         max_length=training_conf.max_length,

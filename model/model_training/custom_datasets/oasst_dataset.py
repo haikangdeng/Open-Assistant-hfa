@@ -9,15 +9,24 @@ from torch.utils.data import Dataset, random_split
 
 
 class ListDataset(Dataset):
-    def __init__(self, data: list):
+    def __init__(self, data: list, mode: Literal["sft", "rm", "rl"] = "rm"):
         super().__init__()
         self.data = data
+        self.mode = mode
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
-        return self.data[index]
+        if self.mode == "sft":
+            prefix = self.data[index][0]
+            good_reply = self.data[index][1][0]
+            if isinstance(prefix, list):
+                return prefix + [good_reply]      # only finetune on good reply
+            else:
+                return [prefix, good_reply]
+        else:
+            return self.data[index]
     
     def reorder_replies_single(self, index: int, new_order: list[int]) -> None:
         self.data[index] = (self.data[index][0], [self.data[index][1][j] for j in new_order])

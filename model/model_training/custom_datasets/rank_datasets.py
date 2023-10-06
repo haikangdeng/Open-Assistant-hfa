@@ -241,7 +241,7 @@ class AnthropicRLHF(Dataset):
         for line in lines:
             if line.startswith("Human:"):
                 speaker = "Human"
-                message = line[7:]
+                message = line[7:]      # skip space after the colon
             elif line.startswith("Assistant:"):
                 speaker = "Assistant"
                 message = line[11:]

@@ -149,7 +149,7 @@ llama2-7b-gold-rm:
   learning_rate: 5e-6
   residual_dropout: 0.0
   weight_decay: 0.0
-  max_length: 2048
+  max_length: 4096
   use_flash_attention: true
   gradient_checkpointing: true
   warmup_steps: 1000

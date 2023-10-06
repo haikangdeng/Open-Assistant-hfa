@@ -162,6 +162,122 @@ gold-sft:
   peft_type: "lora"
   superhot: false
 
+# finetune llama2 on ranking dataset, prepare for contrastive learning
+llama2-7b-gold-sft:
+  dtype: bf16
+  log_dir: "llama2_log_7b"
+  learning_rate: 2e-6
+  model_name: "meta-llama/Llama-2-7b-hf"
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b-backup
+  deepspeed_config: configs/zero3_config_sft.json
+  weight_decay: 0.0
+  max_length: 4096
+  warmup_steps: 500
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  eval_steps: 1000
+  save_steps: 2000
+  num_train_epochs: 1
+  save_total_limit: 15
+  use_flash_attention: true
+
+
+
+lm-sft:
+  rng_seed: 0xa1221f97
+  learning_rate: 1e-5
+  gradient_checkpointing: false
+  int8_training: false
+  gradient_accumulation_steps: 32
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  adam_beta1: 0.9
+  adam_beta2: 0.95
+  adam_epsilon: 1e-12
+  weight_decay: 0.00
+  warmup_steps: 600
+  eval_steps: 200
+  save_strategy: steps
+  save_steps: 1000
+  max_length: 512
+  val_max_length:
+  num_train_epochs: 3
+  logging_steps: 10
+  max_grad_norm: 2.0
+  save_total_limit: 4
+  dtype: fp32
+  eval_accumulation_steps:
+  freeze_layer:
+  datasets:
+    - synthetic_anthropic_rlhf:
+        max_val_set: 500
+    - synthetic_shp:
+        max_val_set: 500
+    - synthetic_hellaswag:
+        max_val_set: 500
+    - synthetic_webgpt:
+        max_val_set: 500
+    - synthetic_hf_summary_pairs:
+        max_val_set: 500
+    - synthetic_oasst_export:
+        max_val_set: 500
+  datasets_extra: [] # For config options to add additional datasets, since yaml doesn't let us extend arrays
+  cache_dir: 
+  loss_fn: CrossEntropyLoss
+  eval_size:
+  log_dir: "base"
+  quantization: false
+  seq2seqmodel: false
+  poly_eps: 1.0
+  fuse_gelu: true
+  log_wandb: true
+  samples_mixing: false # uses collator that mixes samples in the batch to create a single sample with possible multiple tasks within
+  verbose: false
+  output_dir: saved_model
+  use_custom_sampler: false
+  random_offset_probability: 0.8 # probability for random message offsets
+  label_masking: true
+  residual_dropout: 0.0
+  use_flash_attention: false
+  sort_by_length: false
+  use_system_prefix: false
+  system_prefix: ""
+  use_system_tag: false
+  system_property_dropout: 0.5
+  system_add_length: false
+  per_digit_tokens: false
+  is_reward_model: false
+  residual_dropout_lima: false
+  deepspeed_config: configs/zero_config.json
+  peft_model: false
+  peft_type: "lora"
+  superhot: false
+  lhf_directory: /root/haikang/Open-Assistant-hfa/lhf
+
+llama2-7b-lm-sft:
+  dtype: bf16
+  log_dir: "llama2_log_7b"
+  learning_rate: 2e-6
+  model_name: "meta-llama/Llama-2-7b-hf"
+  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/lm-sft/llama2-7b
+  deepspeed_config: configs/zero3_config_sft.json
+  weight_decay: 0.0
+  max_length: 4096
+  warmup_steps: 500
+  gradient_checkpointing: true
+  gradient_accumulation_steps: 1
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 16
+  eval_steps: 1000
+  save_steps: 2000
+  num_train_epochs: 1
+  save_total_limit: 15
+  use_flash_attention: true
+  lhf_directory: /root/haikang/Open-Assistant-hfa/lhf
+
+
 use_system_tag:
   use_system_tag: True
   system_property_dropout: 0.5
@@ -326,27 +442,6 @@ oasst-top1:
         input_file_path: 2023-05-06_OASST_labels.jsonl.gz
         val_split: 0.05
         top_k: 1
-
-# finetune llama2 on ranking dataset, prepare for contrastive learning
-llama2-7b-gold-sft:
-  dtype: bf16
-  log_dir: "llama2_log_7b"
-  learning_rate: 5e-6
-  model_name: "meta-llama/Llama-2-7b-hf"
-  output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b-backup
-  deepspeed_config: configs/zero3_config_sft.json
-  weight_decay: 0.0
-  max_length: 2048
-  warmup_steps: 500
-  gradient_checkpointing: true
-  gradient_accumulation_steps: 1
-  per_device_train_batch_size: 16
-  per_device_eval_batch_size: 16
-  eval_steps: 2000
-  save_steps: 2000
-  num_train_epochs: 1
-  save_total_limit: 15
-  use_flash_attention: true
 
 rlhf-only:
   datasets:

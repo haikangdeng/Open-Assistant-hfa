@@ -319,16 +319,9 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
             model = transformers.LlamaForSequenceClassification.from_pretrained(
                 conf.model_name, num_labels=1, torch_dtype=dtype, device_map="auto"
             )
-            model.config.pad_token_id = tokenizer.eos_token_id  # set pad_token_id for LlamaForSeqClass to tell last token position
-            # for param in model.base_model.parameters():
-            #     param.requires_grad = False
-            # for param in model.score.parameters():
-            #     param.requires_grad = True
-            # print(model.score.weight)
+            # set pad_token_id for LlamaForSeqClass to tell last token position
+            model.config.pad_token_id = tokenizer.eos_token_id 
         else:
-            # model = transformers.AutoModelForSequenceClassification.from_pretrained(
-            #     conf.model_name, cache_dir=conf.cache_dir, num_labels=1, torch_dtype=dtype
-            # )
             model = transformers.AutoModelForSequenceClassification.from_pretrained(
                 conf.model_name, num_labels=1, torch_dtype=dtype
             )
@@ -345,6 +338,8 @@ def get_model(conf, tokenizer, pad_vocab_size_to_multiple_of=16, check_freeze_la
                 without_head=conf.is_reward_model,
                 torch_dtype=dtype,
             )
+        if "llama2-7b" in conf.model_name:
+            model.config.pad_token_id = tokenizer.eos_token_id
 
         n_embs = model.get_input_embeddings().num_embeddings
         if len(tokenizer) != n_embs or pad_vocab_size_to_multiple_of:
@@ -402,6 +397,27 @@ def get_dataset(
 
         if val is not None:
             evals[dataset_name] = Subset(val, list(range(min(len(val), conf.eval_size)))) if conf.eval_size else val
+
+    train = ConcatDataset(train_datasets)
+
+    return train, evals
+
+
+def get_dataset_rm(
+    conf,
+    mode: str = "rm",
+) -> tuple[ConcatDataset, dict[str, Subset]]:
+    train_datasets, evals = [], {}
+
+    for data_config in conf.datasets + conf.datasets_extra:
+        dataset_name, kwargs = get_dataset_name_and_kwargs_from_data_config(data_config)
+        train, val = get_one_dataset(conf, dataset_name, mode=mode, **kwargs)
+        train_datasets.append(train)
+
+        if val is not None:
+            evals[dataset_name] = Subset(val, list(range(min(len(val), conf.eval_size)))) if conf.eval_size else val
+        
+        evals["train_samples_"+dataset_name] = Subset(train, torch.randint(len(train), size=(len(val),)))
 
     train = ConcatDataset(train_datasets)
 

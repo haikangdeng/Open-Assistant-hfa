@@ -73,11 +73,11 @@ class Namespace:
         
 conf = Namespace(lhf_directory="/root/haikang/Open-Assistant-hfa/lhf", cache_dir=None)
 
-syn_train, syn_eval = get_one_dataset(conf, dataset_name="synthesized_hf_summary_pairs", mode="rm")
+syn_train, syn_eval = get_one_dataset(conf, dataset_name="synthetic_hf_summary_pairs", mode="rm")
 hf_train, hf_eval = get_one_dataset(conf, dataset_name="hf_summary_pairs", mode="rm")
 
-# print(hf_train[0])
-# print(syn_train[0])
+print(hf_train[0])
+print(syn_train[0])
 
 #%%
 
@@ -101,6 +101,9 @@ for i in range(len(hf_eval)):
 print(np.mean(correct))
 
 
+##############################################################
+#        TEST SFT DATASET and DIALOGUE COLLATOR
+##############################################################
 #%%
 from model_training.custom_datasets import get_one_dataset
 import numpy as np
@@ -128,19 +131,145 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf
     - oasst_export:
         val_split: 0.2
 '''
-dataset_name = "anthropic_rlhf"     #notok
-dataset_name = "shp"                #ok
+# dataset_name = "anthropic_rlhf"     #notok
+# dataset_name = "shp"                #ok
 # dataset_name = "hellaswag"          #ok
-# dataset_name = "webgpt"             #ok
+dataset_name = "webgpt"             #ok
 # dataset_name = "hf_summary_pairs"   #ok
 # dataset_name = "oasst_export"         #ok
 train, eval = get_one_dataset(conf, dataset_name=dataset_name, mode="sft")
 
-# %%
-train.mode = 'sft'
 collate_fn = DialogueDataCollator(tokenizer)
 # collate_fn = RankingDataCollator(tokenizer)
-print(train[11])
-message = collate_fn.process_one(train[11])
+print(train[100])
+message = collate_fn.process_one(train[100])
 
+# %%
+i = 11
+# dataset_name = "synthetic_anthropic_rlhf"     #ok
+# dataset_name = "synthetic_shp"                #ok
+# dataset_name = "synthetic_hellaswag"          #ok
+# dataset_name = "synthetic_webgpt"             #ok
+dataset_name = "synthetic_hf_summary_pairs"   #ok
+# dataset_name = "synthetic_oasst_export"       #ok 
+train, eval = get_one_dataset(conf, dataset_name=dataset_name, mode="sft")
+collate_fn = DialogueDataCollator(tokenizer)
+# collate_fn = RankingDataCollator(tokenizer)
+print(train[i])
+message = collate_fn.process_one(train[i])
+
+#%%
+train[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############################################################
+#   PICKLE SAVE and LOAD
+#     PICKLE loads the old class not the updated class (no class instantiation)
+##############################################################
+# %%
+import pickle
+
+class Number:
+    def __init__(self):
+        self.number = 1
+        
+number1 = Number()
+print(number1.number)
+
+with open("number.pkl", "wb") as file:
+    pickle.dump(number1, file)
+
+class Number:
+    def __init__(self):
+        self.text = "dfafgdsa"
+
+with open("number.pkl", "rb") as file:
+    number2 = pickle.load(file)
+print(number2.number)
+
+
+
+#%%
+from transformers import AutoTokenizer, AutoModelForCausalLM
+model_path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/lm-sft/llama2-7b/checkpoint-2000"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForCausalLM.from_pretrained(model_path)
+model.config
+# %%
+model.config.is_encoder_decoder
+# %%
+from transformers import AutoTokenizer, LlamaForSequenceClassification
+model_path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = LlamaForSequenceClassification.from_pretrained(model_path)
+model.config
+#%%
+tokenizer.special_tokens_map
+
+# %%
+model.config.pad_token_id
+# %%
+chosen = tokenizer(["hello"])
+chosen
+# %%
+from transformers import AutoTokenizer, AutoModelForCausalLM
+model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
+model.config.pad_token_id
+# %%
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+tokenizer.pad_token_id
+print(tokenizer.pad_token_id)
+# %%
+print(tokenizer.pad_token_id)
+# %%
+import numpy as np
+padded = tokenizer.pad(
+            [
+                {
+                    "input_ids": [1,22,23,24,25,26,27,28,29],
+                    "attention_mask": np.ones_like([1,2,3,4,5,6,7,8,9]).astype(bool),
+                },
+                {
+                    "input_ids": [1,22,23,24],
+                    "attention_mask": np.ones_like([1,22,23,24]).astype(bool),
+                }
+            ],
+            padding=True,
+            pad_to_multiple_of=16,
+            return_tensors="pt",
+        )
+padded
+# %%
+
+
+from model_training.utils.utils import get_tokenizer, match_tokenizer_name
+
+tokenizer_config = match_tokenizer_name("meta-llama/Llama-2-7b-hf")
+tokenizer_config.special_tokens.pad_token
+# %%
+# path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b"
+# path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b"
+path = "meta-llama/Llama-2-7b-hf"
+tokenizer = AutoTokenizer.from_pretrained(path)
+isinstance(tokenizer, (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast))
+# %%
+type(tokenizer)
 # %%

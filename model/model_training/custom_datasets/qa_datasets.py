@@ -14,7 +14,7 @@ from urllib.request import urlopen
 import numpy as np
 import requests
 from datasets import load_dataset
-from model_training.custom_datasets.formatting import DatasetEntry, create_dataset_entry_qa
+from model_training.custom_datasets.formatting import DatasetEntry, create_dataset_entry_qa, DatasetEntrySft
 from model_training.custom_datasets.utils import _filter_by_words
 from torch import Generator
 from torch.utils.data import Dataset, Subset, random_split
@@ -225,8 +225,17 @@ class WebGPT(Dataset):
         return len(self.rows)
 
     def __getitem__(self, index) -> DatasetEntry:
-        dialogue = self.rows[index]
-        return dialogue
+        if self.mode == "sft":
+            print("*** WEBGPT SELF.MODE==SFT")
+            dialogue = self.rows[index]
+            if isinstance(dialogue, DatasetEntrySft):
+                return dialogue
+            else:   # synthetic_webgpt where self.rows[index] is a DatasetEntryRm
+                dialogue = DatasetEntrySft(conversation = dialogue.messages + [dialogue.replies[0]])   # use the best answer for sft
+                return dialogue
+        else:
+            dialogue = self.rows[index]
+            return dialogue
     
     # def get_raw_item(self, index: int) -> tuple[list[str], list[str]]:
     #     return self.__getitem__(index)

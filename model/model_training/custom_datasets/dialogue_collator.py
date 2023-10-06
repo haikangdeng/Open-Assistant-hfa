@@ -4,10 +4,12 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
+from transformers import LlamaTokenizer, LlamaTokenizerFast
 from model_training.custom_datasets.formatting import (
     QA_SPECIAL_TOKENS,
     DatasetEntryLm,
     DatasetEntrySft,
+    DatasetEntryRm,
     format_pairs,
     format_system_prefix,
 )
@@ -42,7 +44,7 @@ class DialogueDataCollator:
         
         # for llama2, change the way dialogues are formatted: end every utterance with \n\n instead of eos_token
         # TODO: change below line to if self.tokenizer is class LlamaTokenizer:
-        if self.tokenizer.eos_token == "</s>" and self.tokenizer.bos_token == "<s>":
+        if isinstance(self.tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
             self.end_token = "\n\n"
         else:
             self.end_token = self.tokenizer.eos_token
@@ -65,7 +67,15 @@ class DialogueDataCollator:
             truncation = TruncationStrategy.LONGEST_FIRST
             max_length = self.max_length
 
-        pretrain_dataset = False
+        # only for synthetic_webgpt edge case, turn DatasetEntryRM into DatasetEntrySft
+        if isinstance(messages, DatasetEntryRm):
+            # only finetune on the first reply
+            if not messages.messages:
+                messages = DatasetEntrySft(conversation = [messages.replies[0]])
+            else:
+                messages = DatasetEntrySft(conversation = messages.messages + [messages.replies[0]])
+                
+        pretrain_dataset = False        
         if isinstance(messages, DatasetEntrySft):
             messages = messages.get_formatted(
                 eos_token=self.end_token,
@@ -79,6 +89,8 @@ class DialogueDataCollator:
         else:
             messages = list(messages)
             messages = format_pairs(messages, self.end_token)
+            
+        print("*** messages: ", "".join(messages))
 
         flatten_message = self.tokenizer(
             "".join(messages),

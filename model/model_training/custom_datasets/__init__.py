@@ -210,6 +210,7 @@ def get_one_dataset(
             syn_data = pickle.load(file)
         orig_train, orig_eval = syn_data["train"], syn_data["eval"]
         # split the original train set into train and eval
+        orig_train.mode = mode
         train, eval = train_val_dataset(orig_train, val_split=val_split)
         
     elif dataset_name in RAG_DATASETS.keys():

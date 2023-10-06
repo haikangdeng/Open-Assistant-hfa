@@ -1,6 +1,3 @@
-# TODO: check metrics returning acc=0.0 and kendalltau=nan
-#       line228: results = compute_metrics(tiled_eval_preds) 
-
 import argparse
 import os
 from collections import defaultdict
