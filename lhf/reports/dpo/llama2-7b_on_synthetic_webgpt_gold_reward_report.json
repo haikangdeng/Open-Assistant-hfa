@@ -1,0 +1,6 @@
+{
+    "model": "../../lhf/saved_models/dpo/llama2-7b",
+    "dataset": "synthetic_webgpt",
+    "split": "synthetic_eval",
+    "gold_reward": -0.27243483940453667
+}

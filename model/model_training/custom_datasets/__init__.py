@@ -99,7 +99,7 @@ def train_val_dataset(dataset, val_split=0.2) -> tuple[Dataset, Dataset | None]:
     )
     return Subset(dataset, train_idx), Subset(dataset, val_idx)
 
-# TODO: add syn_xx
+
 def get_one_dataset(
     conf,
     dataset_name: str,

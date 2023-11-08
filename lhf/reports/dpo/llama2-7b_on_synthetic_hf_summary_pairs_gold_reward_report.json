@@ -1,0 +1,6 @@
+{
+    "model": "../../lhf/saved_models/dpo/llama2-7b",
+    "dataset": "synthetic_hf_summary_pairs",
+    "split": "synthetic_eval",
+    "gold_reward": -0.13488975914418633
+}

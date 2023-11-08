@@ -1,1 +1,1 @@
-{"train": {"dataset": "oasst_export", "split": "train", "accuracy": "0.736", "kendalltau": "0.372"}, "eval": {"dataset": "oasst_export", "split": "eval", "accuracy": "0.727", "kendalltau": "0.349"}}
+{"train": {"dataset": "oasst_export", "split": "train", "accuracy": "0.737", "kendalltau": "0.366"}, "eval": {"dataset": "oasst_export", "split": "eval", "accuracy": "0.727", "kendalltau": "0.351"}}

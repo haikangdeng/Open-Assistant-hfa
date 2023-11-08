@@ -32,6 +32,16 @@ def write_to_json(filename, data):
 
     with open(filename, "w") as file:
         json.dump(data, file, indent=4)
+        
+
+def write_to_jsonl(filename, data: list):
+    if not filename.endswith(".jsonl"):
+        filename = f"{filename}.jsonl"
+        
+    with open(filename, "w") as file:
+        for entry in data:
+            json.dump(entry, file)
+            file.write("\n")
 
 
 def describe_samples(samples):

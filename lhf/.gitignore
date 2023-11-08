@@ -1,9 +1,0 @@
-saved_models/gold-rm/*
-!saved_models/gold-rm/.gitkeep
-saved_models/gold-sft/*
-!saved_models/gold-sft/.gitkeep
-saved_models/lm-sft/*
-!saved_models/lm-sft/.gitkeep
-synthetic_data/*.pkl
-!synthetic_data/.gitkeep
-synthetic_data/sft_not_compatible

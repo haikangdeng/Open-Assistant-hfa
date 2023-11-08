@@ -1,1 +1,1 @@
-{"train": {"dataset": "hf_summary_pairs", "split": "train", "accuracy": "0.773", "kendalltau": "0.546"}, "eval": {"dataset": "hf_summary_pairs", "split": "eval", "accuracy": "0.715", "kendalltau": "0.429"}}
+{"train": {"dataset": "hf_summary_pairs", "split": "train", "accuracy": "0.772", "kendalltau": "0.545"}, "eval": {"dataset": "hf_summary_pairs", "split": "eval", "accuracy": "0.711", "kendalltau": "0.423"}}

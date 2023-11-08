@@ -163,22 +163,37 @@ train[0]
 
 
 
+#%%
+from transformers import AutoTokenizer
+path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/dpo/llama2-7b"
+tokenizer = AutoTokenizer.from_pretrained(path)
+
+text = "Assistant: what are these? \n\n Human: This is a sentence."
+inputs = tokenizer(text, padding=False, truncation=False)["input_ids"]
+
+#%%
+raw = tokenizer.decode(inputs[1:])
+
+if "Human: " in raw:
+    raw = raw[: raw.find("Human: ")]
+    # consume spaces here
+    while raw[-1] == " ":
+        raw = raw[:-1]
+    if raw[-len("\n\n"):] == "\n\n":
+        raw = raw[:-len("\n\n")]
+    while raw[-1] == " ":
+        raw = raw[:-1]
+raw
 
 
+#%%
+from transformers import LlamaTokenizer, LlamaTokenizerFast
+SKIP_AMOUNT = {
+    LlamaTokenizerFast: 1,
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+isinstance(tokenizer, (LlamaTokenizer, LlamaTokenizerFast))
+SKIP_AMOUNT.get(type(tokenizer), 0)
 
 ##############################################################
 #   PICKLE SAVE and LOAD
@@ -258,18 +273,29 @@ padded = tokenizer.pad(
         )
 padded
 # %%
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 
-
-from model_training.utils.utils import get_tokenizer, match_tokenizer_name
-
-tokenizer_config = match_tokenizer_name("meta-llama/Llama-2-7b-hf")
-tokenizer_config.special_tokens.pad_token
-# %%
 # path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-sft/llama2-7b"
-# path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b"
-path = "meta-llama/Llama-2-7b-hf"
+path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/gold-rm/llama2-7b"
+# path = "meta-llama/Llama-2-7b-hf"
 tokenizer = AutoTokenizer.from_pretrained(path)
-isinstance(tokenizer, (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast))
-# %%
-type(tokenizer)
+model = AutoModelForCausalLM.from_pretrained(path, device_map="auto")
+
+model.config.pad_token_id
+
+
+
+#%%
+from transformers import AutoTokenizer, AutoModelForCausalLM
+path = "/root/haikang/Open-Assistant-hfa/lhf/saved_models/dpo/llama2-7b"
+tokenizer = AutoTokenizer.from_pretrained(path)
+model = AutoModelForCausalLM.from_pretrained(path, device_map="auto")
+
+#%%
+text = "Human:  I am building a mechanical keyboard from scratch. I already have the working hardware and am in the process of configuring the firmware. However i find that the qwertz layout gives me wrist pain. I will use the keyboard for writing in english, german and french, and for coding mainly.\nWhat keyboard layout would be best suited for me?\n\nAssistant:  Generally, it seems that Neo layout may be what you are looking for.\nHere are some keyboard layouts for various use cases: \nFor French: BvoFrak, Bépo\nFor German: Neo, AdNW\nFor English: DHIATENSOR, Dvorak,\nFor programing: Programmer Dvorak, Evolved, Capewell, QGMLWY, Arensito\nNote that while layout may contribute to wrist pain, other factors like the angle of the keyboard, key spacing (vertical, horizontal, and depth), more may also be contributing factors. Learning a new layout takes time and effort, and may make it more difficult to type on other keyboards.\n\nHuman:  what is the advantage of BvoFrak and Bépo, over Azerty that is more common in France.\n\nAssistant: "
+inputs = tokenizer(text, padding=False, truncation=False, return_tensors="pt").to("cuda")
+outputs = model.generate(**inputs, max_new_tokens=100)
+tokenizer.decode(outputs[0])
+
 # %%

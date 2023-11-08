@@ -402,7 +402,7 @@ def get_dataset(
 
     return train, evals
 
-
+# only for varifying train set accuracy
 def get_dataset_rm(
     conf,
     mode: str = "rm",

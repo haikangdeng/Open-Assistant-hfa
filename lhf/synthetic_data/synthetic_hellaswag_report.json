@@ -1,1 +1,1 @@
-{"train": {"dataset": "hellaswag", "split": "train", "accuracy": "0.912", "kendalltau": "0.824"}, "eval": {"dataset": "hellaswag", "split": "eval", "accuracy": "0.915", "kendalltau": "0.831"}}
+{"train": {"dataset": "hellaswag", "split": "train", "accuracy": "0.971", "kendalltau": "0.941"}, "eval": {"dataset": "hellaswag", "split": "eval", "accuracy": "0.962", "kendalltau": "0.924"}}

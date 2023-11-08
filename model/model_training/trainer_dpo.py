@@ -47,12 +47,12 @@ class CustomDPODataCollatorWithPadding(DPODataCollatorWithPadding):
     model: Optional[PreTrainedModel] = None
     padding: Union[bool, str] = True
     max_length: Optional[int] = None
-    max_prompt_length: Optional[int] = None
+    min_prefix_length: int = 256
     label_pad_token_id: int = -100
     padding_value: int = 0
     truncation_mode: str = "keep_end"
     is_encoder_decoder: Optional[bool] = False
-    max_target_length: Optional[int] = None
+    # max_target_length: Optional[int] = None
     max_replies: Optional[int] = 5
     use_system_tag: bool = False
     system_property_dropout: float = 0.5
@@ -118,21 +118,26 @@ class CustomDPODataCollatorWithPadding(DPODataCollatorWithPadding):
             rejected_tokens["attention_mask"].append(1)
 
             longer_response_length = max(len(chosen_tokens["input_ids"]), len(rejected_tokens["input_ids"]))
-
+            # print("*** longer_response_length ", longer_response_length, "is of type ", type(longer_response_length))
+            # print("*** self.max_length ", self.max_length, "is of type ", type(self.max_length))
+            # print("*** self.min_prefix_length ", self.min_prefix_length, "is of type ", type(self.min_prefix_length))
+            max_prefix_length = max(self.min_prefix_length, self.max_length - longer_response_length)
+            max_suffix_len = self.max_length - max_prefix_length
+            
             # if combined sequence is too long, truncate the prompt
             if len(prompt_tokens["input_ids"]) + longer_response_length > self.max_length:
                 if self.truncation_mode == "keep_start":
-                    prompt_tokens = {k: v[: self.max_prompt_length] for k, v in prompt_tokens.items()}
+                    prompt_tokens = {k: v[: max_prefix_length] for k, v in prompt_tokens.items()}
                 elif self.truncation_mode == "keep_end":
-                    prompt_tokens = {k: v[-self.max_prompt_length :] for k, v in prompt_tokens.items()}
+                    prompt_tokens = {k: v[-max_prefix_length :] for k, v in prompt_tokens.items()}
                 else:
                     raise ValueError(f"Unknown truncation mode: {self.truncation_mode}")
 
             # if that's still too long, truncate the response
             if len(prompt_tokens["input_ids"]) + longer_response_length > self.max_length:
-                chosen_tokens = {k: v[: self.max_length - self.max_prompt_length] for k, v in chosen_tokens.items()}
+                chosen_tokens = {k: v[: max_suffix_len] for k, v in chosen_tokens.items()}
                 rejected_tokens = {
-                    k: v[: self.max_length - self.max_prompt_length] for k, v in rejected_tokens.items()
+                    k: v[: max_suffix_len] for k, v in rejected_tokens.items()
                 }
 
             # Create labels
@@ -158,14 +163,16 @@ class CustomDPODataCollatorWithPadding(DPODataCollatorWithPadding):
                     batch[f"{k}_{type_key}"] = tokens
 
         else:
+            max_suffix_length = self.max_length - self.min_prefix_length
             chosen_tokens = self.tokenizer(
-                chosen, truncation=True, max_length=self.max_target_length, add_special_tokens=True
+                chosen, truncation=True, max_length=max_suffix_length, add_special_tokens=True
             )
             rejected_tokens = self.tokenizer(
-                rejected, truncation=True, max_length=self.max_target_length, add_special_tokens=True
+                rejected, truncation=True, max_length=max_suffix_length, add_special_tokens=True
             )
+            max_prefix_length = self.max_length - max(len(chosen_tokens["input_ids"]), len(rejected_tokens["input_ids"]))
             prompt_tokens = self.tokenizer(
-                prompt, truncation=True, max_length=self.max_prompt_length, add_special_tokens=True
+                prompt, truncation=True, max_length=max_prefix_length, add_special_tokens=True
             )
 
             batch["chosen_labels"] = chosen_tokens["input_ids"]
@@ -285,6 +292,7 @@ class CustomDPODataCollatorWithPadding(DPODataCollatorWithPadding):
         for example in examples:
             prefix, replies = self.process_one(example)
             for chosen, rejected in zip(replies[:-1], replies[1:]):
+                # n replies result in n-1 comparisons
                 features.append({"prompt": prefix, "chosen": chosen, "rejected": rejected})
         
         tokenized_batch = []

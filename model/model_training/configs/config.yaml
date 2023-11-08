@@ -260,7 +260,7 @@ llama2-7b-lm-sft:
   dtype: bf16
   log_dir: "llama2_log_7b"
   learning_rate: 2e-6
-  model_name: "meta-llama/Llama-2-7b-hf"
+  model_name: "meta-llama/Llama-2-7b-hf"      # take pretrained llama2
   output_dir: /root/haikang/Open-Assistant-hfa/lhf/saved_models/lm-sft/llama2-7b
   deepspeed_config: configs/zero3_config_sft.json
   weight_decay: 0.0
