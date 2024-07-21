@@ -90,7 +90,7 @@ class DialogueDataCollator:
             messages = list(messages)
             messages = format_pairs(messages, self.end_token)
             
-        print("*** messages: ", "".join(messages))
+        # print("*** messages: ", "".join(messages))
 
         flatten_message = self.tokenizer(
             "".join(messages),

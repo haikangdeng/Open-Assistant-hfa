@@ -77,6 +77,7 @@ RM_DATASETS = [
     "synthetic_oasst_export",
     "augment_oasst",
     "anthropic_rlhf",
+    "anthropic_rlhf_reserved",
     "synthetic_anthropic_rlhf",
     "hf_summary",
     "hf_summary_pairs",
@@ -202,6 +203,7 @@ def get_one_dataset(
         dataset = OrcaChat(cache_dir=data_path, **kwargs)
     elif dataset_name == "dolphin-mix":
         dataset = DolphinMix(cache_dir=data_path, **kwargs)
+    
     # synthetic data
     elif dataset_name[:9] == "synthetic":
         pkl_file = dataset_name + ".pkl"
@@ -212,6 +214,16 @@ def get_one_dataset(
         # split the original train set into train and eval
         orig_train.mode = mode
         train, eval = train_val_dataset(orig_train, val_split=val_split)
+    
+    # for nado gold rm
+    elif dataset_name == "anthropic_rlhf_reserved":
+        # verified: check if eval is created the same way as train set (format consistency)
+        # verified: make sure reserved subset is always the same, and make sure the train/val split creates reproducible result
+        orig_train, orig_eval = load_anthropic_rlhf(mode=mode)
+        orig_size, reserved_size = len(orig_train), int(0.3 * len(orig_train))      # 161k, 48.3k
+        reserved_subset_indices = np.random.choice(orig_size, size=reserved_size, replace=False)    # seed already set by trainer
+        reserved_train_split = Subset(orig_train, reserved_subset_indices)
+        train, eval = train_val_dataset(reserved_train_split, val_split=val_split)  # same seed inside the function
         
     elif dataset_name in RAG_DATASETS.keys():
         dataset = RAGDataset(dataset_name, cache_dir=data_path, **kwargs)
